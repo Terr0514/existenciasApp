@@ -22,10 +22,10 @@ from tqdm import tqdm
 class existenciasOdoo():
     def __init__(self):
         # Pandas, analisis de datos 
-        self.odooURL = ""
-        self.odooDB = ""
-        self.odooUser = ""
-        self.odooPass = ""
+        self.odooURL = "https://cea-control1.odoo.com"
+        self.odooDB = "pruebas111"
+        self.odooUser = "apoyo.direccion@ceacontrol.com"
+        self.odooPass = "apoyo.direccion"
 
         self.parkerPath = os.path.join("excel/Parker.xlsx")
         self.invCeaPath = os.path.join("excel/InventarioCEA.xlsx")
@@ -94,6 +94,7 @@ class existenciasOdoo():
         countVlid = 0
         countNonValid = 0
         prodCad = ""
+        precio = ""
         
         stockMessage = ""
         bar = tqdm(total= len(df), desc=f"Analizando {filePath}")
@@ -102,6 +103,7 @@ class existenciasOdoo():
             #Buscoando en Odoo si existe el producto on ese codigo    
             codigo = str(row.iloc[column_code]).strip()
             cantidad = str(row.iloc[cuantity_code]).strip()
+        
             if count % 100 == 0 and count != 0:
                 time.sleep(2)
             try:
@@ -112,16 +114,30 @@ class existenciasOdoo():
                     'product.product',
                     'search_read',
                     [[['name', 'ilike', codigo]]],
-                    {'fields':['id','name','default_code', 'type'],'limit':1}
+                    {'fields':['id','name','default_code', 'type', 'list_price'],'limit':1}
                     )
+                if filePath == self.parkerPath:
+                    precio = str(row.iloc[3]).strip()
+                    if precio != str(producto[0]['list_price']):
+                        self.models.execute_kw(
+                            self.odooDB,
+                            self.uid,
+                            self.odooPass,
+                            'product.product',
+                            'write',
+                            [[producto[0]['id']],
+                            {
+                                'list_price': precio
+                            }
+                                
+                            ]
+                        )
                 count += 1
-                0
+                
                 if os.name == 'nt':
                     os.system('cls')    
                 else:                         
                     os.system('clear')
-        
-            #print(f"Analizando {filePath}...")
                 
                 bar.update(1)
                 print(f"Productos analizados: {count}")
@@ -138,7 +154,6 @@ class existenciasOdoo():
                     countVlid += 1
                     stockMessage = self.createNewStockCuant(id, location_ID , cantidad, codigo)     
                     
-
             
                 else:
                     validCodes.append(False)
