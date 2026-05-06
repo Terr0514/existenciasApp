@@ -33,14 +33,13 @@ class existenciasOdoo():
         self.optexPath = os.path.join("excel/existenciasOptex.xlsx")
         self.optexPDFPath = os.path.join("PDF/optex.pdf")
         self.pilzPath = os.path.join("excel/Pilz.xlsx")
-    
-        self.finder = pd.read_csv(os.path.join("excel/Finder.csv"), sep=";")
+
         self.finderPath = os.path.join("excel/Finder.xlsx")
         self.eatonPath = os.path.join("excel/Eaton.xlsx")
         self.eatonPDFPath = os.path.join("PDF/Eaton.pdf")
 
         self.parker = pd.read_excel(self.parkerPath)
-        self.finder.to_excel(self.finderPath, index=False)  
+        self.finder = pd.read_excel(self.finderPath, index=False)  
         self.invCEA = pd.read_excel(self.invCeaPath, skiprows=6)
         self.stockPhoenix = pd.read_excel(self.stockPhoenixPath) 
         self.pilz = pd.read_excel(self.pilzPath)
@@ -113,25 +112,9 @@ class existenciasOdoo():
                     self.odooPass,
                     'product.product',
                     'search_read',
-                    [[['name', 'ilike', codigo]]],
+                    [[['name', '=', codigo]]],
                     {'fields':['id','name','default_code', 'type', 'list_price'],'limit':1}
                     )
-                if filePath == self.parkerPath:
-                    precio = str(row.iloc[3]).strip()
-                    if precio != str(producto[0]['list_price']):
-                        self.models.execute_kw(
-                            self.odooDB,
-                            self.uid,
-                            self.odooPass,
-                            'product.product',
-                            'write',
-                            [[producto[0]['id']],
-                            {
-                                'list_price': precio
-                            }
-                                
-                            ]
-                        )
                 count += 1
                 
                 if os.name == 'nt':
@@ -147,13 +130,32 @@ class existenciasOdoo():
                 print(stockMessage)
                 print(f"Archivos Analizados: {self.countDF}/{self.totalDF}")
                 if producto:
+                    #Si en el caso de que el producto sea de Parker,
+                    #el programa compara los precios para comprobar si estan actualizados
+                    #en el caso de que no, este mismo actualiza el precio en base al excel
+                    if filePath == self.parkerPath:
+                        precio = str(row.iloc[3]).strip()
+                        if precio != str(producto[0]['list_price']):
+                            self.models.execute_kw(
+                                self.odooDB,
+                                self.uid,
+                                self.odooPass,
+                                'product.product',
+                                'write',
+                                [[producto[0]['id']],
+                                {
+                                'list_price': precio
+                                }
+                                
+                            ]
+                        )
                     id = producto[0]['id']
                     productsIDs.append(id)
                     validCodes.append(True)
                     invalidCodes.append(False)
                     countVlid += 1
                     stockMessage = self.createNewStockCuant(id, location_ID , cantidad, codigo)     
-                    
+
             
                 else:
                     validCodes.append(False)
